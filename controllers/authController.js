@@ -6,14 +6,16 @@ import dotenv from "dotenv";
 dotenv.config();
 
 export const signup = async (req, res) => {
-  const { username, password } = req.body;
-
+  const { username, password, full_name } = req.body;
   try {
+    if (!username || !password || !full_name) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
     let user = await User.findOne({ username });
     if (user) {
       return res.status(400).json({ message: "User already exists" });
     }
-    user = new User({ username, password });
+    user = new User({ username, password, full_name });
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(password, salt);
     await user.save();
@@ -29,13 +31,14 @@ export const signup = async (req, res) => {
       { expiresIn: "1h" },
       (err, token) => {
         if (err) throw err;
-        res
-          .status(201)
-          .json({
+        res.status(201).json({
+          data: {
             token,
             username,
-            success: "User signed up successfully",
-          });
+            full_name,
+          },
+          success: "User signed up successfully",
+        });
       }
     );
     console.log("USER SAVED", user);
@@ -71,7 +74,13 @@ export const login = async (req, res) => {
       { expiresIn: "1h" },
       (err, token) => {
         if (err) throw err;
-        res.json({ token });
+        res.status(201).json({
+          data: {
+            full_name: user.full_name,
+            token,
+            message: "User signed in successfully",
+          },
+        });
       }
     );
   } catch (err) {
